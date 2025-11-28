@@ -1,0 +1,21 @@
+[project]
+name = "rg-compiler"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Georgiy Malaniya", email = "pwlsd.gm@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "pyright>=1.1.407",
+    "pytest>=9.0.1",
+    "repomix>=0.3.4",
+]
+
+[project.scripts]
+rg-compiler = "rg_compiler:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

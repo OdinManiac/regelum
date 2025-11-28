@@ -1,0 +1,54 @@
+from dataclasses import dataclass, field
+from typing import List, Dict, Set, Optional, Literal, Any
+from rg_compiler.core.types import NodeId
+from rg_compiler.core.dsl import Expr
+from rg_compiler.core.contracts import Contract
+
+@dataclass
+class IRReaction:
+    id: str
+    reads_vars: Set[str] = field(default_factory=set)
+    writes_vars: Set[str] = field(default_factory=set)
+    ast: Optional[Expr[Any]] = None
+    explicit_writes: Dict[str, Expr[Any]] = field(default_factory=dict)
+    output_port: Optional[str] = None # Added field
+    contract: Optional[Contract] = None 
+    is_unsafe: bool = False
+    unsafe_reason: Optional[str] = None
+    python_method: Optional[Any] = None
+
+@dataclass
+class IRPort:
+    name: str
+    rate: Optional[int] = None
+    has_default: bool = False 
+
+@dataclass
+class IRNode:
+    id: NodeId
+    kind: Literal["Raw", "Core", "Ext"]
+    inputs: Dict[str, str] = field(default_factory=dict)
+    outputs: Dict[str, str] = field(default_factory=dict)
+    input_meta: Dict[str, IRPort] = field(default_factory=dict)
+    output_meta: Dict[str, IRPort] = field(default_factory=dict)
+    reactions: List[IRReaction] = field(default_factory=list)
+
+@dataclass
+class IREdge:
+    src_node: NodeId
+    src_port: str
+    dst_node: NodeId
+    dst_port: str
+
+@dataclass
+class IRVariable:
+    name: str
+    policy: str
+    has_init: bool = True
+
+@dataclass
+class IRGraph:
+    nodes: Dict[NodeId, IRNode] = field(default_factory=dict)
+    edges: List[IREdge] = field(default_factory=list)
+    variables: Dict[str, IRVariable] = field(default_factory=dict)
+    config: Dict[str, Any] = field(default_factory=dict)
