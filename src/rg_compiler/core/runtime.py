@@ -21,16 +21,36 @@ class RuntimeIntentContext(IntentContext):
         self.intents = intents
 
     def read(self, port: Port) -> Any:
-        # If port is an input, find connected output.
-        source_port = self.edges.get(port, port)
+        # If port is an input, find connected output(s).
+        sources = self.edges.get(port, [])
         
-        # Get value from state
+        if not sources:
+            # No connection
+            # Check if provided externally via inputs in run_tick
+            if port in self.port_state:
+                return self.port_state[port]
+            
+            if port.default is not None:
+                return port.default
+            return ABSENT
+
+        if len(sources) == 1:
+            # Single source
+            source_port = sources[0]
+            val = self.port_state.get(source_port, ABSENT)
+            if val is ABSENT and port.default is not None:
+                return port.default
+            return val
+        
+        # Multiple sources -> Merge?
+        # For now, strictly return the first one or handle differently?
+        # If we are here, the Compiler might have warned/errored.
+        # Runtime behavior: Non-deterministic or LWW (last one added).
+        # Let's just pick the last one to simulate LWW if strict mode didn't block it.
+        source_port = sources[-1]
         val = self.port_state.get(source_port, ABSENT)
-        
-        # Apply default if ABSENT
         if val is ABSENT and port.default is not None:
             return port.default
-            
         return val
 
     def write(self, port: Port, value: Any) -> None:
@@ -48,7 +68,7 @@ class RuntimeIntentContext(IntentContext):
 class GraphRuntime:
     def __init__(self):
         self.nodes: Dict[NodeId, RawNode] = {}
-        self.edges: Dict[Port, Port] = {}
+        self.edges: Dict[Port, List[Port]] = defaultdict(list)
         self.schedule: List[List[NodeId]] = [] # List of SCCs
         self.port_state: Dict[Port, Any] = {}
         self.var_state: Dict[str, Any] = {} # Variable.name -> Value
@@ -60,14 +80,15 @@ class GraphRuntime:
         node.bind_runtime(self) # Bind runtime to node and its ports
 
     def connect(self, src: Port, dst: Port) -> None:
-        self.edges[dst] = src
+        self.edges[dst].append(src)
 
     def build_schedule(self) -> None:
         # Tarjan's Algorithm to find SCCs
         adj: Dict[NodeId, List[NodeId]] = defaultdict(list)
-        for dst_port, src_port in self.edges.items():
-            if dst_port.node_id and src_port.node_id and dst_port.node_id != src_port.node_id:
-                adj[src_port.node_id].append(dst_port.node_id)
+        for dst_port, src_ports in self.edges.items():
+            for src_port in src_ports:
+                if dst_port.node_id and src_port.node_id and dst_port.node_id != src_port.node_id:
+                    adj[src_port.node_id].append(dst_port.node_id)
 
         visited: Set[NodeId] = set()
         stack: List[NodeId] = []
@@ -153,9 +174,11 @@ class GraphRuntime:
                 self._run_scc_loop(scc, intents)
 
     def _has_self_loop(self, node_id: NodeId) -> bool:
-        for dst_port, src_port in self.edges.items():
-            if dst_port.node_id == node_id and src_port.node_id == node_id:
-                return True
+        for dst_port, src_ports in self.edges.items():
+            if dst_port.node_id == node_id:
+                for src_port in src_ports:
+                    if src_port.node_id == node_id:
+                        return True
         return False
 
     def _run_node(self, node_id: NodeId, intents: List[Intent[Any]]) -> None:
@@ -163,7 +186,7 @@ class GraphRuntime:
         ctx = RuntimeIntentContext(
             node_id, 
             self.port_state, 
-            self.edges, 
+            self.edges, # Pass the dict(list)
             self.var_state, 
             intents
         )

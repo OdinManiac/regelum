@@ -29,7 +29,7 @@ def test_autowire_success():
     # Check connection
     # C.data should be connected to P.data
     assert c.inputs["data"] in pipe.runtime.edges
-    assert pipe.runtime.edges[c.inputs["data"]] == p.outputs["data"]
+    assert p.outputs["data"] in pipe.runtime.edges[c.inputs["data"]]
 
 def test_autowire_ambiguity_strict():
     pipe = Pipeline()

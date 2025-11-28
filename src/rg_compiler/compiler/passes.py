@@ -11,9 +11,17 @@ class StructuralPass(Pass):
     
     def run(self, ir: IRGraph, diag: DiagnosticSink) -> None:
         connected_dsts = set()
+        dst_counts = defaultdict(int)
+        
         for edge in ir.edges:
-            connected_dsts.add((edge.dst_node, edge.dst_port))
+            key = (edge.dst_node, edge.dst_port)
+            connected_dsts.add(key)
+            dst_counts[key] += 1
             
+        for (node_id, port_name), count in dst_counts.items():
+            if count > 1:
+                diag.error("STRUCT002", f"Port '{node_id}.{port_name}' has {count} incoming edges (Fan-in > 1). Use a Merge node.", location=str(node_id))
+
         for node_id, node in ir.nodes.items():
             for input_name in node.inputs:
                 is_connected = (node_id, input_name) in connected_dsts
@@ -160,6 +168,7 @@ class CausalityPass(Pass):
 
         # 3. Find SCCs
         sccs = self._tarjan(list(nodes), adj)
+        print(f"DEBUG: Found SCCs: {sccs}")
         
         for scc in sccs:
             if len(scc) > 1:

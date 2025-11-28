@@ -39,6 +39,26 @@ class Expr(Generic[T]):
         if not isinstance(other, Expr):
             other = Const(other)
         return Cmp("<", self, other)
+        
+    def __gt__(self, other: Union["Expr[T]", T]) -> "Expr[bool]":
+        if not isinstance(other, Expr):
+            other = Const(other)
+        return Cmp(">", self, other)
+
+    def __le__(self, other: Union["Expr[T]", T]) -> "Expr[bool]":
+        if not isinstance(other, Expr):
+            other = Const(other)
+        return Cmp("<=", self, other)
+
+    def __ge__(self, other: Union["Expr[T]", T]) -> "Expr[bool]":
+        if not isinstance(other, Expr):
+            other = Const(other)
+        return Cmp(">=", self, other)
+        
+    def __eq__(self, other: Union["Expr[T]", T]) -> "Expr[bool]":
+        if not isinstance(other, Expr):
+            other = Const(other)
+        return Cmp("==", self, other)
 
 @dataclass
 class Const(Expr[T]):

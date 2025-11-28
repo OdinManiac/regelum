@@ -182,15 +182,16 @@ class CompilerPipeline:
             )
             ir.nodes[node_id] = ir_node
             
-        for dst, src in runtime.edges.items():
-            if src.node_id and dst.node_id:
-                edge = IREdge(
-                    src_node=src.node_id,
-                    src_port=src.name,
-                    dst_node=dst.node_id,
-                    dst_port=dst.name
-                )
-                ir.edges.append(edge)
+        for dst, sources in runtime.edges.items():
+            for src in sources:
+                if src.node_id and dst.node_id:
+                    edge = IREdge(
+                        src_node=src.node_id,
+                        src_port=src.name,
+                        dst_node=dst.node_id,
+                        dst_port=dst.name
+                    )
+                    ir.edges.append(edge)
                 
         return ir
 

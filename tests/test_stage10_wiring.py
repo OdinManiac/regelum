@@ -39,7 +39,7 @@ def test_wiring_dsl():
     dst_port = c.inputs["inp"]
     
     assert dst_port in runtime.edges
-    assert runtime.edges[dst_port] == src_port
+    assert src_port in runtime.edges[dst_port]
 
 def test_wiring_before_add_raises():
     runtime = GraphRuntime()

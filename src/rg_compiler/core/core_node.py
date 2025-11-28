@@ -105,7 +105,11 @@ class CoreNode(RawNode):
             
         ast = method(*args)
         
-        output_name = "out" if "out" in self.outputs else None
+        output_name = None
+        if "out" in self.outputs:
+            output_name = "out"
+        elif len(self.outputs) == 1:
+            output_name = next(iter(self.outputs))
         
         self.reactions.append(CoreReaction(
             name=name, 

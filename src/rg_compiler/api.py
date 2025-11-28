@@ -3,7 +3,7 @@ from collections import defaultdict
 from rg_compiler.core.runtime import GraphRuntime
 from rg_compiler.core.node import RawNode
 from rg_compiler.compiler.pipeline import CompilerPipeline, CompilerConfig
-from rg_compiler.compiler.passes import StructuralPass, TypeCheckPass, CausalityPass, WriteConflictPass
+from rg_compiler.compiler.passes import StructuralPass, TypeCheckPass, CausalityPass, WriteConflictPass, InitPass
 from rg_compiler.compiler.passes_sdf import SDFPass
 from rg_compiler.compiler.report import CompilationReport
 
@@ -71,6 +71,7 @@ class Pipeline:
         compiler.add_pass(TypeCheckPass())
         compiler.add_pass(CausalityPass())
         compiler.add_pass(WriteConflictPass())
+        compiler.add_pass(InitPass())
         compiler.add_pass(SDFPass())
         
         ir = compiler.build_ir(self.runtime)
