@@ -5,6 +5,18 @@ T = TypeVar("T")
 
 @dataclass
 class Expr(Generic[T]):
+    def __bool__(self) -> bool:
+        raise RuntimeError(
+            "Expr cannot be evaluated as a boolean. "
+            "Use DSL If/Delay/min/max instead of Python control flow over reactive expressions."
+        )
+
+    def __len__(self) -> int:
+        raise RuntimeError(
+            "Expr has no length in Python control flow. "
+            "Use DSL combinators instead of relying on truthiness or len()."
+        )
+
     def __add__(self, other: Union["Expr[T]", T]) -> "Expr[T]":
         if not isinstance(other, Expr):
             other = Const(other)

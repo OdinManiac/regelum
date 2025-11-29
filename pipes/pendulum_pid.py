@@ -1,137 +1,139 @@
+from __future__ import annotations
+
 import math
-from dataclasses import dataclass
-from rg_compiler.core.core_node import CoreNode, Input, Output, State, reaction
-from rg_compiler.core.dsl import Expr, If, Const, Var, BinOp, Cmp
-from rg_compiler.core.runtime import GraphRuntime
-from rg_compiler.compiler.pipeline import CompilerPipeline, CompilerConfig
-from rg_compiler.compiler.passes import StructuralPass, TypeCheckPass, CausalityPass, WriteConflictPass
-from rg_compiler.compiler.report import CompilationReport
-from rg_compiler.core.ext_node import ExtNode
+
+from rg_compiler.api import Pipeline
+from rg_compiler.core.continuous import ContinuousNode, ContinuousState
 from rg_compiler.core.contracts import contract
+from rg_compiler.core.core_node import CoreNode, Input, Output, State, reaction
+from rg_compiler.core.dsl import Expr, Delay, If
+from rg_compiler.core.ext_node import ExtNode
 from rg_compiler.core.node import Context
-from rg_compiler.core.values import is_absent
-from rg_compiler.api import Pipeline 
+from rg_compiler.vis import DashboardPlotter, DashboardSignal, build_dashboard
 
 DT = 0.01
 GRAVITY = 9.81
 LENGTH = 1.0
-MASS = 1.0
-TARGET_ANGLE = 3.14159 
+TARGET_ANGLE = math.pi
+MAX_FORCE = 500.0
 
-# Unified Port Names for Auto-Wiring:
-# force, state, theta, omega
 
-class PendulumPhysics(ExtNode):
-    # Use defaults to handle Absent values automatically
-    force = Input[float](default=0.0)
-    state = Input[tuple[float, float]](default=(0.1, 0.0))
-    next_state = Output[tuple[float, float]]() 
+class PendulumContinuous(ContinuousNode):
+    theta = ContinuousState(0.1)
+    omega = ContinuousState(0.0)
 
-    @contract(deterministic=True, no_side_effects=True)
-    def step(self, ctx: Context):
-        # Runtime automatically substitutes default if Absent
-        force = ctx.read(self.inputs["force"])
-        state = ctx.read(self.inputs["state"])
-        
-        theta, omega = state
-        alpha = - (GRAVITY / LENGTH) * math.sin(theta) + force
-        
-        new_omega = omega + alpha * DT
-        new_theta = theta + new_omega * DT
-        
-        ctx.write(self.outputs["next_state"], (new_theta, new_omega))
+    def derivative(self, t: float, state: dict[str, float], inputs: dict[str, float]) -> dict[str, float]:
+        theta_val = state["theta"]
+        omega_val = state["omega"]
+        force = inputs.get("force", inputs.get("u", 0.0))
+        dtheta = omega_val
+        domega = -(GRAVITY / LENGTH) * math.sin(theta_val) + force
+        return {"theta": dtheta, "omega": domega}
+
+    def outputs(self, t: float, state: dict[str, float], inputs: dict[str, float]) -> dict[str, float]:
+        return {"theta": state["theta"], "omega": state["omega"]}
+
 
 class PIDController(CoreNode):
     theta = Input[float]()
     omega = Input[float]()
     force = Output[float]()
-    
+
     integral = State[float](init=0.0)
-    
-    Kp = 10.0
-    Ki = 0.1
-    Kd = 1.0
-    
-    @reaction
-    def control(self, theta: Expr[float], omega: Expr[float], integ: Expr[float]) -> Expr[float]:
-        error = 3.14159 - theta
+
+    Kp = 5.0
+    Ki = 0.0
+    Kd = 5.0
+
+    @reaction(rank="integral", max_microsteps=2)
+    def control(self, theta: Expr[float], omega: Expr[float], integral: Expr[float]) -> Expr[float]:
+        error = TARGET_ANGLE - theta
+
         p_term = error * self.Kp
-        new_integ = integ + error * DT
-        i_term = new_integ * self.Ki
-        self.integral.set(new_integ)
+        new_integ = integral + error * DT
+        clamped_integ = If(
+            new_integ > MAX_FORCE,
+            MAX_FORCE,
+            If(new_integ < -MAX_FORCE, -MAX_FORCE, new_integ),
+        )
+        self.integral.set(clamped_integ)
+
+        i_term = clamped_integ * self.Ki
         d_term = (0.0 - omega) * self.Kd
         u = p_term + i_term + d_term
-        return u
+
+        return If(u > MAX_FORCE, MAX_FORCE, If(u < -MAX_FORCE, -MAX_FORCE, u))
+
 
 class Splitter(ExtNode):
-    state = Input[tuple[float, float]]()
+    plant_state_delayed = Input[dict](default={"theta": 0.0, "omega": 0.0})
     theta = Output[float]()
     omega = Output[float]()
-    
-    @contract(deterministic=True)
+
+    @contract(deterministic=True, no_side_effects=True)
     def step(self, ctx: Context):
-        # No default here? If absent, we just don't write.
-        # But wait, ctx.read returns ABSENT if no default.
-        s = ctx.read(self.inputs["state"])
-        
-        if not is_absent(s):
-            t, o = s
-            ctx.write(self.outputs["theta"], t)
-            ctx.write(self.outputs["omega"], o)
+        s = ctx.read(self.inputs["plant_state_delayed"])
+        theta_val = s.get("theta", 0.0)
+        omega_val = s.get("omega", 0.0)
+        ctx.write(self.outputs["theta"], theta_val)
+        ctx.write(self.outputs["omega"], omega_val)
 
-class SharedStorage:
-    def __init__(self, val):
-        self.val = val
 
-class DelayOut(ExtNode):
-    state = Output[tuple[float, float]]() 
-    
-    def __init__(self, node_id: str, storage: SharedStorage):
-        super().__init__(node_id)
-        self.storage = storage
-        
-    @contract(deterministic=True, no_instant_loop=True)
-    def step(self, ctx: Context):
-        ctx.write(self.outputs["state"], self.storage.val)
+class StateDelay(CoreNode):
+    plant_state = Input[dict](default={"theta": 0.1, "omega": 0.0})
+    plant_state_delayed = Output[dict]()
 
-class DelayIn(ExtNode):
-    next_state = Input[tuple[float, float]]() 
-    
-    def __init__(self, node_id: str, storage: SharedStorage):
-        super().__init__(node_id)
-        self.storage = storage
-        
-    @contract(deterministic=True)
-    def step(self, ctx: Context):
-        curr = ctx.read(self.inputs["next_state"])
-        if not is_absent(curr):
-            self.storage.val = curr
+    @reaction
+    def feed(self, plant_state: Expr[dict]) -> Expr[dict]:
+        return Delay(plant_state, default={"theta": 0.1, "omega": 0.0})
 
-def run_simulation():
-    pipe = Pipeline(mode="pragmatic")
-    
-    phys = PendulumPhysics("Physics")
+
+def build_pipeline(dt: float = DT) -> Pipeline:
+    plant = PendulumContinuous("Plant").as_hybrid(
+        dt=dt,
+        hold_init=0.0,
+        u_name="force",
+        y_name="plant_state",
+        state_name="continuous_state",
+    )
     ctrl = PIDController("PID")
     split = Splitter("Split")
-    
-    delay_storage = SharedStorage((0.1, 0.0))
-    delay_out = DelayOut("DelayOut", delay_storage)
-    delay_in = DelayIn("DelayIn", delay_storage)
-    
-    pipe.add(phys, ctrl, delay_out, delay_in, split)
-    
-    print("Auto-wiring...")
-    pipe.auto_wire(strict=True)
-    
+    delay = StateDelay("Delay")
+
+    dash = build_dashboard(
+        "Dashboard",
+        [
+            DashboardSignal("theta", "theta (rad)", (255, 99, 71)),
+            DashboardSignal("omega", "omega (rad/s)", (54, 162, 235)),
+            DashboardSignal("force", "force", (75, 192, 192)),
+        ],
+        time_window=None,
+    )
+
+    pipe = Pipeline(mode="strict")
+    pipe.add(plant, ctrl, split, delay, dash)
+    pipe.auto_wire()
+
+    return pipe
+
+
+def run_simulation():
+    pipe = build_pipeline(dt=DT)
     if not pipe.compile():
         return
+    dash: DashboardPlotter = pipe.runtime.nodes["Dashboard"]  # type: ignore[assignment]
+    step_idx = 0
+    while step_idx < 3000:
+        if dash.paused:
+            dash.render_static()
+            continue
+        pipe.run(ticks=1, dt=DT)
+        plant_node = pipe.runtime.nodes["Plant"]
+        state = pipe.runtime.port_state.get(plant_node.outputs["plant_state"], {"theta": 0.0, "omega": 0.0})
+        control = pipe.runtime.port_state.get(pipe.runtime.nodes["PID"].outputs["force"], 0.0)
+        print(f"T={step_idx*DT:.2f} theta={state['theta']:.3f} omega={state['omega']:.3f} control={control:.3f}")
+        step_idx += 1
 
-    print("Starting Simulation...")
-    for i in range(100):
-        pipe.runtime.run_tick()
-        t = i * DT
-        theta = delay_storage.val[0]
-        print(f"T={t:.2f} Theta={theta:.4f}")
 
 if __name__ == "__main__":
     run_simulation()

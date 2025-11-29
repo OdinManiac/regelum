@@ -7,6 +7,7 @@ from rg_compiler.core.runtime import GraphRuntime
 from rg_compiler.compiler.pipeline import CompilerPipeline, CompilerConfig
 from rg_compiler.compiler.passes import StructuralPass, TypeCheckPass, WriteConflictPass, CausalityPass
 from rg_compiler.compiler.passes_sdf import SDFPass
+from rg_compiler.core.variables import SumPolicy
 
 # --- Helpers ---
 def run_compile(runtime: GraphRuntime):
@@ -65,10 +66,10 @@ def test_scenario_2_causality_ext_node():
     errors = [d.code for d in res.diagnostics if d.severity.name == "ERROR"]
     assert "CAUS001" in errors
 
-# --- Scenario 3: Multiple Writers (WRITE001/002) ---
+# --- Scenario 3: Multiple Writers (WRITE001) ---
 def test_scenario_3_multiple_writers():
     class MultiWriteNode(CoreNode):
-        val = State(0) # Default ErrorPolicy
+        val = State(0)  # Default ErrorPolicy
         in1 = Input(default=0)
         in2 = Input(default=0)
         
@@ -86,11 +87,34 @@ def test_scenario_3_multiple_writers():
     
     res = run_compile(runtime)
     
-    # LWWPolicy gives ERROR now in strict mode
-    # So success should be False.
+    # ErrorPolicy forbids multi-writers, should fail deterministically.
     assert not res.success
     errors = [d.code for d in res.diagnostics if d.severity.name == "ERROR"]
-    assert "WRITE002" in errors
+    assert "WRITE001" in errors
+
+def test_scenario_3_sum_policy_allows_merge():
+    class SumNode(CoreNode):
+        total = State(0, policy=SumPolicy())
+        in_a = Input(default=0)
+        in_b = Input(default=0)
+        out = Output()
+        
+        @reaction
+        def write_a(self, in_a: Expr[int]) -> Expr[int]:
+            self.total.set(in_a)
+            return in_a
+        
+        @reaction
+        def write_b(self, in_b: Expr[int]) -> Expr[int]:
+            self.total.set(in_b)
+            return in_b
+    
+    runtime = GraphRuntime()
+    node = SumNode("sum")
+    runtime.add_node(node)
+    
+    res = run_compile(runtime)
+    assert res.success
 
 # --- Scenario 4: Constructive Cycle (CAUS003) ---
 def test_scenario_4_constructive_cycle():
@@ -99,8 +123,8 @@ def test_scenario_4_constructive_cycle():
         out = Output()
         
         @reaction
-        def step(self, in_):
-            return in_ # Direct passthrough x = x
+        def tick(self, in_):
+            return 1 - in_
             
     runtime = GraphRuntime()
     node = LoopNode("loop")
@@ -132,7 +156,7 @@ def test_scenario_4_constructive_cycle_fixed_with_delay():
         out = Output()
         
         @reaction
-        def step(self, in_):
+        def tick(self, in_):
             # Using Delay(in_, default=0)
             return Delay(in_, 0)
             

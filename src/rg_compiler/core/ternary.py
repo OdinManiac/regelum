@@ -1,27 +1,39 @@
-from enum import Enum
-from typing import Generic, TypeVar, Optional
+from __future__ import annotations
+
 from dataclasses import dataclass
+from enum import Enum
+from typing import Generic, Optional, TypeVar
 
 T = TypeVar("T")
 
-class B3(Enum):
-    BOTTOM = "⊥"
-    FALSE = "0"
-    TRUE = "1"
 
-@dataclass
+class Presence(Enum):
+    BOTTOM = "⊥"
+    ABSENT = "∅"
+    PRESENT = "✓"
+
+
+@dataclass(frozen=True)
 class V3(Generic[T]):
-    value: Optional[T]
-    known: bool
+    presence: Presence
+    value: Optional[T] = None
     
     @classmethod
-    def bottom(cls):
-        return cls(None, False)
+    def bottom(cls) -> V3[T]:
+        return cls(Presence.BOTTOM, None)
     
     @classmethod
-    def known(cls, val: T):
-        return cls(val, True)
+    def absent(cls) -> V3[T]:
+        return cls(Presence.ABSENT, None)
+    
+    @classmethod
+    def present(cls, val: T) -> V3[T]:
+        return cls(Presence.PRESENT, val)
+    
+    @property
+    def known(self) -> bool:
+        return self.presence == Presence.PRESENT
     
     def is_bottom(self) -> bool:
-        return not self.known
+        return self.presence == Presence.BOTTOM
 

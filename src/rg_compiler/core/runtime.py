@@ -1,11 +1,15 @@
 from typing import Any, Dict, List, TypeVar, Set
-from collections import deque, defaultdict
+from collections import defaultdict
 from .types import NodeId
 from .node import RawNode, Port, IntentContext
 from .variables import Variable, Intent
 from .values import ABSENT
 
 T = TypeVar("T")
+
+class ZenoRuntimeError(RuntimeError):
+    """Raised when an instantaneous loop exceeds the allowed microsteps."""
+
 
 class RuntimeIntentContext(IntentContext):
     def __init__(self, 
@@ -42,11 +46,6 @@ class RuntimeIntentContext(IntentContext):
                 return port.default
             return val
         
-        # Multiple sources -> Merge?
-        # For now, strictly return the first one or handle differently?
-        # If we are here, the Compiler might have warned/errored.
-        # Runtime behavior: Non-deterministic or LWW (last one added).
-        # Let's just pick the last one to simulate LWW if strict mode didn't block it.
         source_port = sources[-1]
         val = self.port_state.get(source_port, ABSENT)
         if val is ABSENT and port.default is not None:
@@ -72,6 +71,8 @@ class GraphRuntime:
         self.schedule: List[List[NodeId]] = [] # List of SCCs
         self.port_state: Dict[Port, Any] = {}
         self.var_state: Dict[str, Any] = {} # Variable.name -> Value
+        self.max_microsteps = 20
+        self.current_time = 0.0
 
     def add_node(self, node: RawNode) -> None:
         if node.id in self.nodes:
@@ -87,8 +88,12 @@ class GraphRuntime:
         adj: Dict[NodeId, List[NodeId]] = defaultdict(list)
         for dst_port, src_ports in self.edges.items():
             for src_port in src_ports:
-                if dst_port.node_id and src_port.node_id and dst_port.node_id != src_port.node_id:
-                    adj[src_port.node_id].append(dst_port.node_id)
+                dst_nid = dst_port.node_id
+                src_nid = src_port.node_id
+                if dst_nid and self.nodes[dst_nid]._no_instant_loop:
+                    continue
+                if dst_nid and src_nid and dst_nid != src_nid:
+                    adj[src_nid].append(dst_nid)
 
         visited: Set[NodeId] = set()
         stack: List[NodeId] = []
@@ -126,15 +131,25 @@ class GraphRuntime:
             if node_id not in visited:
                 dfs(node_id)
 
-        self.schedule = sccs # Reverse topological order (leafs first? No, Tarjan returns reverse topo)
-        # Actually Tarjan returns SCCs in reverse topological order (leaves first).
-        # For execution we usually want Roots first (Source -> Sink).
-        # So we should reverse the list.
+        self.schedule = sccs 
         self.schedule.reverse()
 
+    def _prefill_delay_outputs(self) -> None:
+        for node in self.nodes.values():
+            state_vars = getattr(node, "_state_vars", None)
+            if not state_vars:
+                continue
+            for port in node.outputs.values():
+                delay_state = getattr(port, "delay_state_name", None)
+                if not delay_state:
+                    continue
+                if delay_state not in state_vars:
+                    continue
+                var = state_vars[delay_state]
+                value = self.var_state.get(var.name, var.init)
+                self.port_state[port] = value
+
     def run_step(self) -> None:
-        # Legacy run_step
-        # Iterate flattened schedule
         for scc in self.schedule:
             for node_id in scc:
                 node = self.nodes[node_id]
@@ -147,9 +162,16 @@ class GraphRuntime:
                 )
                 node.step(ctx)
 
-    def run_tick(self, inputs: Dict[Port, Any] = None) -> None:
+    def run_tick(self, inputs: Dict[Port, Any] | None = None, dt: float | None = None) -> None:
         # Stage 6: Clear ports at start of tick.
         self.port_state.clear()
+        self._prefill_delay_outputs()
+
+        if dt is not None:
+            for node in self.nodes.values():
+                for name, port in node.inputs.items():
+                    if name == "dt":
+                        self.port_state[port] = dt
         
         # Apply external inputs if provided
         if inputs:
@@ -165,6 +187,8 @@ class GraphRuntime:
         
         # 3. Commit Phase
         self._commit_phase(updates)
+        if dt is not None:
+            self.current_time += dt
 
     def _propose_phase(self, intents: List[Intent[Any]]) -> None:
         for scc in self.schedule:
@@ -186,30 +210,36 @@ class GraphRuntime:
         ctx = RuntimeIntentContext(
             node_id, 
             self.port_state, 
-            self.edges, # Pass the dict(list)
+            self.edges,
             self.var_state, 
+            intents
+        )
+        node.step(ctx)
+    
+    def _run_node_with_state(self, node_id: NodeId, intents: List[Intent[Any]], var_state: Dict[str, Any]) -> None:
+        node = self.nodes[node_id]
+        ctx = RuntimeIntentContext(
+            node_id, 
+            self.port_state, 
+            self.edges,
+            var_state, 
             intents
         )
         node.step(ctx)
 
     def _run_scc_loop(self, scc: List[NodeId], global_intents: List[Intent[Any]]) -> None:
-        # Fixed-point iteration
-        # We run until output ports of SCC nodes stabilize.
-        
-        # Optimization: Only track ports belonging to nodes in SCC?
-        # For simplicity, we re-run and capture local intents.
-        
         prev_outputs: Dict[Port, Any] = {}
-        
-        # Max iterations
-        for _ in range(20):
+        working_vars: Dict[str, Any] = dict(self.var_state)
+        last_intents: List[Intent[Any]] = []
+        limit = self._scc_limit(scc)
+        for _ in range(limit):
             current_intents: List[Intent[Any]] = []
             changed = False
+            before_vars = dict(working_vars)
             
             for node_id in scc:
-                self._run_node(node_id, current_intents)
+                self._run_node_with_state(node_id, current_intents, working_vars)
                 
-                # Check outputs change
                 node = self.nodes[node_id]
                 for port in node.outputs.values():
                     new_val = self.port_state.get(port, ABSENT)
@@ -219,14 +249,19 @@ class GraphRuntime:
                         changed = True
                         prev_outputs[port] = new_val
             
-            if not changed:
-                global_intents.extend(current_intents)
+            updates = self._resolve_phase(current_intents)
+            for name, val in updates.items():
+                prev_val = working_vars.get(name, ABSENT)
+                if prev_val != val:
+                    changed = True
+                    working_vars[name] = val
+            
+            last_intents = current_intents
+            if not changed and before_vars == working_vars:
+                global_intents.extend(last_intents)
                 return
                 
-        # If not converged, we warn but proceed with latest values (or raise Zeno error at runtime?)
-        # discussion.md suggests Zeno check is compile time. Runtime enforces limit.
-        global_intents.extend(current_intents)
-        # print(f"WARNING: SCC {scc} did not converge in 20 steps.")
+        raise ZenoRuntimeError(f"Instantaneous loop {scc} exceeded {limit} microsteps without convergence.")
 
     def _resolve_phase(self, intents: List[Intent[Any]]) -> Dict[str, Any]:
         grouped: Dict[Variable[Any], List[Intent[Any]]] = defaultdict(list)
@@ -243,3 +278,16 @@ class GraphRuntime:
 
     def _commit_phase(self, updates: Dict[str, Any]) -> None:
         self.var_state.update(updates)
+
+    def _scc_limit(self, scc: List[NodeId]) -> int:
+        limit = self.max_microsteps
+        for node_id in scc:
+            node = self.nodes[node_id]
+            reactions = getattr(node, "reactions", None)
+            if not reactions:
+                continue
+            for reaction in reactions:
+                rank_limit = getattr(reaction, "nonzeno_limit", None)
+                if rank_limit is not None:
+                    limit = min(limit, rank_limit)
+        return limit

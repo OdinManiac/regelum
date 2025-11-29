@@ -1,6 +1,6 @@
 import pytest
 from rg_compiler.core.dsl import If, Const, Var, BinOp
-from rg_compiler.core.ternary import V3, B3
+from rg_compiler.core.ternary import V3
 from rg_compiler.core.interpreter import eval_expr_3val
 from rg_compiler.ir.graph import IRGraph, IRNode, IRReaction, IREdge
 from rg_compiler.compiler.pipeline import DiagnosticSink

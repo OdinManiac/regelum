@@ -13,6 +13,8 @@ class Port:
         self.rate: Optional[int] = None 
         self.default: Any = default
         self._runtime: Optional['GraphRuntime'] = None 
+        self.is_delay_output: bool = False
+        self.delay_state_name: Optional[str] = None
 
     def __repr__(self) -> str:
         return f"Port(name={self.name}, node={self.node_id}, default={self.default})"
@@ -71,6 +73,7 @@ class RawNode(ABC):
         self.inputs: Dict[str, Port] = {}
         self.outputs: Dict[str, Port] = {}
         self._runtime: Optional['GraphRuntime'] = None
+        self._no_instant_loop: bool = False
 
     @property
     def i(self) -> PortAccessor:

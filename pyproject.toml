@@ -8,6 +8,8 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "loguru>=0.7.3",
+    "pygame>=2.6.1",
     "pyright>=1.1.407",
     "pytest>=9.0.1",
     "repomix>=0.3.4",

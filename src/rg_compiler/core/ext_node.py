@@ -13,6 +13,11 @@ class ExtNode(RawNode):
     def __init__(self, node_id: str):
         super().__init__(node_id)
         self._build_structure()
+        step_fn = getattr(self, "step", None)
+        contract = getattr(step_fn, "_contract", None)
+        self._contract: Contract | None = contract
+        if contract:
+            self._no_instant_loop = contract.no_instant_loop
 
     def _build_structure(self):
         for name, attr in self.__class__.__dict__.items():

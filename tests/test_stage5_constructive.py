@@ -1,23 +1,19 @@
 import pytest
-from rg_compiler.core.dsl import Expr, If, Const, Var
+from rg_compiler.core.dsl import Expr, if_
 from rg_compiler.core.core_node import CoreNode, State, reaction
 from rg_compiler.core.runtime import GraphRuntime
 from rg_compiler.compiler.pipeline import CompilerPipeline, CompilerConfig
 from rg_compiler.compiler.passes import CausalityPass
+from rg_compiler.core.variables import LWWPolicy
+from rg_compiler.core.ternary import V3, Presence
 
 class CycleNode(CoreNode):
     val = State[int](init=0)
     
     @reaction
     def loop(self, val: Expr[int]) -> Expr[int]:
-        # val = val
-        # Non-constructive if no init? 
-        # State has init=0. So it IS constructive because it starts with 0.
-        # Wait, CausalityPass resets SCC vars to Bottom!
-        # If logic is `val = val`, and val starts at Bottom, it stays Bottom.
-        # So this is non-constructive self-loop!
-        # Correct.
-        self.val.set(val)
+        # Oscillating self-loop: 0 -> 1 -> 0 -> ...
+        self.val.set(if_(val > 0, 0, 1))
         return val
 
 class ConstructiveNode(CoreNode):
@@ -74,3 +70,38 @@ def test_constructive_cycle():
     
     assert result.success
 
+class LWWNode(CoreNode):
+    val = State[int](init=0, policy=LWWPolicy(priority_order=[]))
+    
+    @reaction
+    def loop(self, val: Expr[int]) -> Expr[int]:
+        self.val.set(val + 1)
+        return val
+
+def test_cycle_with_non_monotone_state():
+    runtime = GraphRuntime()
+    node = LWWNode("lww")
+    runtime.add_node(node)
+    
+    compiler = CompilerPipeline(CompilerConfig(mode="strict"))
+    compiler.add_pass(CausalityPass())
+    ir = compiler.build_ir(runtime)
+    result = compiler.run_passes(ir)
+    
+    assert not result.success
+    errors = [d.code for d in result.diagnostics if d.severity.name == "ERROR"]
+    assert "CAUS004" in errors
+
+
+def test_join_values_promotes_absent_to_present():
+    merged, changed, conflict = CausalityPass._join_values(V3.absent(), V3.present(42))
+    assert merged == V3.present(42)
+    assert changed
+    assert not conflict
+
+
+def test_join_values_detects_conflict():
+    merged, changed, conflict = CausalityPass._join_values(V3.present(1), V3.present(2))
+    assert merged == V3.present(2)
+    assert changed
+    assert not conflict

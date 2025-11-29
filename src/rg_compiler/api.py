@@ -1,11 +1,26 @@
 from typing import List, Any, Optional
 from collections import defaultdict
+
+from loguru import logger
+
+from rg_compiler.logging_config import configure_logging
 from rg_compiler.core.runtime import GraphRuntime
 from rg_compiler.core.node import RawNode
 from rg_compiler.compiler.pipeline import CompilerPipeline, CompilerConfig
-from rg_compiler.compiler.passes import StructuralPass, TypeCheckPass, CausalityPass, WriteConflictPass, InitPass
+from rg_compiler.compiler.passes import (
+    StructuralPass,
+    TypeCheckPass,
+    CausalityPass,
+    WriteConflictPass,
+    InitPass,
+    NonZenoPass,
+    ContinuousPass,
+)
 from rg_compiler.compiler.passes_sdf import SDFPass
 from rg_compiler.compiler.report import CompilationReport
+
+configure_logging()
+
 
 class Pipeline:
     def __init__(self, mode: str = "pragmatic"):
@@ -55,15 +70,21 @@ class Pipeline:
                         # Let's allow it, CausalityPass will check it.
                         self.runtime.connect(src_port, port)
                         connections_made += 1
-                        print(f"Auto-wired: {src_node.id}.{src_port.name} -> {node.id}.{port.name}")
+                        logger.info(
+                            "Auto-wired {src}.{sport} -> {dst}.{dport}",
+                            src=src_node.id,
+                            sport=src_port.name,
+                            dst=node.id,
+                            dport=port.name,
+                        )
                     elif len(sources) > 1:
                         msg = f"Ambiguous auto-wire for port '{name}': found sources {[n.id for n, p in sources]}"
                         if strict:
                             raise ValueError(msg)
                         else:
-                            print(f"WARNING: {msg}. Skipping.")
+                            logger.warning("{msg}. Skipping auto-wire.", msg=msg)
         
-        print(f"Auto-wiring completed. {connections_made} connections established.")
+        logger.info("Auto-wiring completed. connections={count}", count=connections_made)
 
     def compile(self) -> bool:
         compiler = CompilerPipeline(CompilerConfig(mode=self.mode))
@@ -72,6 +93,8 @@ class Pipeline:
         compiler.add_pass(CausalityPass())
         compiler.add_pass(WriteConflictPass())
         compiler.add_pass(InitPass())
+        compiler.add_pass(NonZenoPass())
+        compiler.add_pass(ContinuousPass())
         compiler.add_pass(SDFPass())
         
         ir = compiler.build_ir(self.runtime)
@@ -79,18 +102,18 @@ class Pipeline:
         
         self.report = CompilationReport(ir, res.diagnostics)
         if not res.success:
-            print(self.report)
+            logger.error("Pipeline compilation failed:\n{report}", report=self.report)
             return False
             
         self.runtime.build_schedule()
         self._compiled = True
         return True
         
-    def run(self, ticks: int = 1, inputs: dict = None):
+    def run(self, ticks: int = 1, inputs: dict = None, dt: float | None = None):
         if not self._compiled:
             if not self.compile():
                 raise RuntimeError("Pipeline compilation failed")
                 
-        print(f"Running pipeline for {ticks} ticks...")
+        logger.info("Running pipeline ticks={ticks}", ticks=ticks)
         for _ in range(ticks):
-            self.runtime.run_tick(inputs=inputs)
+            self.runtime.run_tick(inputs=inputs, dt=dt)
