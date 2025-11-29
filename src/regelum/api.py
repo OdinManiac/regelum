@@ -3,11 +3,11 @@ from collections import defaultdict
 
 from loguru import logger
 
-from rg_compiler.logging_config import configure_logging
-from rg_compiler.core.runtime import GraphRuntime
-from rg_compiler.core.node import RawNode
-from rg_compiler.compiler.pipeline import CompilerPipeline, CompilerConfig
-from rg_compiler.compiler.passes import (
+from regelum.logging_config import configure_logging
+from regelum.core.runtime import GraphRuntime
+from regelum.core.node import RawNode
+from regelum.compiler.pipeline import CompilerPipeline, CompilerConfig
+from regelum.compiler.passes import (
     StructuralPass,
     TypeCheckPass,
     CausalityPass,
@@ -16,8 +16,8 @@ from rg_compiler.compiler.passes import (
     NonZenoPass,
     ContinuousPass,
 )
-from rg_compiler.compiler.passes_sdf import SDFPass
-from rg_compiler.compiler.report import CompilationReport
+from regelum.compiler.passes_sdf import SDFPass
+from regelum.compiler.report import CompilationReport
 
 configure_logging()
 

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from rg_compiler.api import Pipeline
-from rg_compiler.core.core_node import CoreNode, Input, Output, State, reaction
-from rg_compiler.core.dsl import Expr, Delay
-from rg_compiler.core.ext_node import ExtNode
-from rg_compiler.core.contracts import contract
-from rg_compiler.core.variables import SumPolicy
+from regelum.api import Pipeline
+from regelum.core.core_node import CoreNode, Input, Output, State, reaction
+from regelum.core.dsl import Expr, Delay
+from regelum.core.ext_node import ExtNode
+from regelum.core.contracts import contract
+from regelum.core.variables import SumPolicy
 
 
 class Setpoint(CoreNode):

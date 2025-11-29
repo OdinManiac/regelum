@@ -13,7 +13,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from pipes.router_fixed_point import INF, _default_graph, build_router_pipeline
-from rg_compiler.core.runtime import ZenoRuntimeError
+from regelum.core.runtime import ZenoRuntimeError
 
 
 def _bellman_ford(graph: Dict[str, Dict[str, float]], target: str) -> Dict[str, float]:

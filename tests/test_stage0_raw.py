@@ -1,7 +1,7 @@
 import pytest
 from typing import Any
-from rg_compiler.core.node import RawNode, Context
-from rg_compiler.core.runtime import GraphRuntime
+from regelum.core.node import RawNode, Context
+from regelum.core.runtime import GraphRuntime
 
 class AdderNode(RawNode):
     def __init__(self, node_id: str, val: int = 1):

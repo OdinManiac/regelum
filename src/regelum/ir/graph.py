@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Set, Optional, Literal, Any
-from rg_compiler.core.types import NodeId
-from rg_compiler.core.dsl import Expr
-from rg_compiler.core.contracts import Contract
+from regelum.core.types import NodeId
+from regelum.core.dsl import Expr
+from regelum.core.contracts import Contract
 
 @dataclass
 class IRReaction:

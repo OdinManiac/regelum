@@ -1,6 +1,6 @@
 from typing import List, Any
-from rg_compiler.ir.graph import IRGraph
-from rg_compiler.compiler.pipeline import Pass, DiagnosticSink, DiagnosticSeverity
+from regelum.ir.graph import IRGraph
+from regelum.compiler.pipeline import Pass, DiagnosticSink, DiagnosticSeverity
 
 class CompilationReport:
     def __init__(self, ir: IRGraph, diagnostics: List[Any]):

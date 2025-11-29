@@ -5,12 +5,12 @@ from typing import Dict, Iterable, Tuple
 
 import pygame
 
-from rg_compiler.api import Pipeline
-from rg_compiler.core.contracts import contract
-from rg_compiler.core.core_node import CoreNode, Input, Output, reaction
-from rg_compiler.core.dsl import BinOp, Const, Expr
-from rg_compiler.core.ext_node import ExtNode
-from rg_compiler.core.node import Context, Port
+from regelum.api import Pipeline
+from regelum.core.contracts import contract
+from regelum.core.core_node import CoreNode, Input, Output, reaction
+from regelum.core.dsl import BinOp, Const, Expr
+from regelum.core.ext_node import ExtNode
+from regelum.core.node import Context, Port
 
 INF = 1e9
 

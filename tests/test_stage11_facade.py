@@ -1,7 +1,7 @@
 import pytest
-from rg_compiler.core.core_node import CoreNode, Input, Output, reaction
-from rg_compiler.core.dsl import Expr
-from rg_compiler.api import Pipeline
+from regelum.core.core_node import CoreNode, Input, Output, reaction
+from regelum.core.dsl import Expr
+from regelum.api import Pipeline
 
 class Inc(CoreNode):
     # StructuralPass fixed to respect default

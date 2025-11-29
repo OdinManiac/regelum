@@ -2,14 +2,14 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import List, Optional, Any, get_type_hints, Set
 from enum import Enum
-from rg_compiler.core.runtime import GraphRuntime
-from rg_compiler.core.node import RawNode
-from rg_compiler.core.core_node import CoreNode
-from rg_compiler.core.ext_node import ExtNode
-from rg_compiler.core.hybrid_adapters import ContinuousWrapper
-from rg_compiler.core.dsl import Expr, Var
-from rg_compiler.ir.graph import IRGraph, IRNode, IRReaction, IREdge, IRVariable, IRPort
-from rg_compiler.compiler.expr_utils import collect_expr_vars
+from regelum.core.runtime import GraphRuntime
+from regelum.core.node import RawNode
+from regelum.core.core_node import CoreNode
+from regelum.core.ext_node import ExtNode
+from regelum.core.hybrid_adapters import ContinuousWrapper
+from regelum.core.dsl import Expr, Var
+from regelum.ir.graph import IRGraph, IRNode, IRReaction, IREdge, IRVariable, IRPort
+from regelum.compiler.expr_utils import collect_expr_vars
 
 class DiagnosticSeverity(Enum):
     ERROR = "ERROR"

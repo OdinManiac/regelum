@@ -1,7 +1,7 @@
 import pytest
-from rg_compiler.core.node import RawNode, Context
-from rg_compiler.core.runtime import GraphRuntime
-from rg_compiler.core.values import ABSENT, is_absent, is_present
+from regelum.core.node import RawNode, Context
+from regelum.core.runtime import GraphRuntime
+from regelum.core.values import ABSENT, is_absent, is_present
 
 class Emitter(RawNode):
     def __init__(self, id, val):

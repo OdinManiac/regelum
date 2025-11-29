@@ -1,9 +1,9 @@
 import pytest
-from rg_compiler.api import Pipeline
-from rg_compiler.core.core_node import Input, Output, State, CoreNode, reaction
-from rg_compiler.core.ext_node import ExtNode
-from rg_compiler.core.dsl import if_, Var
-from rg_compiler.core.variables import ErrorPolicy
+from regelum.api import Pipeline
+from regelum.core.core_node import Input, Output, State, CoreNode, reaction
+from regelum.core.ext_node import ExtNode
+from regelum.core.dsl import if_, Var
+from regelum.core.variables import ErrorPolicy
 from dataclasses import dataclass
 
 # --- Shared Data Structures ---

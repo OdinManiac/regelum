@@ -1,9 +1,9 @@
-from rg_compiler.core.node import RawNode, Context
-from rg_compiler.core.core_node import Input, Output, State, CoreNode, reaction
-from rg_compiler.core.ext_node import ExtNode
-from rg_compiler.core.runtime import GraphRuntime
-from rg_compiler.compiler.pipeline import CompilerPipeline, CompilerConfig
-from rg_compiler.compiler.passes import StructuralPass, TypeCheckPass, CausalityPass, WriteConflictPass
+from regelum.core.node import RawNode, Context
+from regelum.core.core_node import Input, Output, State, CoreNode, reaction
+from regelum.core.ext_node import ExtNode
+from regelum.core.runtime import GraphRuntime
+from regelum.compiler.pipeline import CompilerPipeline, CompilerConfig
+from regelum.compiler.passes import StructuralPass, TypeCheckPass, CausalityPass, WriteConflictPass
 from typing import Any
 
 # --- Naive Implementation from our_goal.md ---

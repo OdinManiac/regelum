@@ -5,16 +5,16 @@ import pytest
 
 os.environ["RG_DISABLE_FILE_LOGS"] = "1"
 
-from rg_compiler.core.continuous import (
+from regelum.core.continuous import (
     ContinuousNode,
     ContinuousRuntime,
     ContinuousState,
     INTEGRATOR_EULER,
     INTEGRATOR_RK4,
 )
-from rg_compiler.core.hybrid_adapters import ContinuousWrapper
-from rg_compiler.api import Pipeline
-from rg_compiler.core.node import RawNode, Context
+from regelum.core.hybrid_adapters import ContinuousWrapper
+from regelum.api import Pipeline
+from regelum.core.node import RawNode, Context
 
 
 class DecayNode(ContinuousNode):

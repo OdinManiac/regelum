@@ -1,11 +1,11 @@
 import pytest
-from rg_compiler.core.runtime import GraphRuntime, ZenoRuntimeError
-from rg_compiler.core.node import RawNode, Context
-from rg_compiler.core.core_node import CoreNode, Input, Output, State, reaction
-from rg_compiler.core.dsl import Expr
-from rg_compiler.ir.graph import IRGraph, IRNode, IRReaction, IRVariable
-from rg_compiler.compiler.pipeline import CompilerPipeline, CompilerConfig
-from rg_compiler.compiler.passes import NonZenoPass
+from regelum.core.runtime import GraphRuntime, ZenoRuntimeError
+from regelum.core.node import RawNode, Context
+from regelum.core.core_node import CoreNode, Input, Output, State, reaction
+from regelum.core.dsl import Expr
+from regelum.ir.graph import IRGraph, IRNode, IRReaction, IRVariable
+from regelum.compiler.pipeline import CompilerPipeline, CompilerConfig
+from regelum.compiler.passes import NonZenoPass
 
 
 def test_non_zeno_pass_requires_rank():

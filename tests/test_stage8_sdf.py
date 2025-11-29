@@ -1,9 +1,9 @@
 import pytest
-from rg_compiler.core.core_node import CoreNode, Input, Output, reaction
-from rg_compiler.core.dsl import Expr
-from rg_compiler.core.runtime import GraphRuntime
-from rg_compiler.compiler.pipeline import CompilerPipeline, CompilerConfig
-from rg_compiler.compiler.passes_sdf import SDFPass
+from regelum.core.core_node import CoreNode, Input, Output, reaction
+from regelum.core.dsl import Expr
+from regelum.core.runtime import GraphRuntime
+from regelum.compiler.pipeline import CompilerPipeline, CompilerConfig
+from regelum.compiler.passes_sdf import SDFPass
 
 class Producer(CoreNode):
     out = Output[int](rate=2)

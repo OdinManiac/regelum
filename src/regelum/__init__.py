@@ -1,6 +1,6 @@
 from loguru import logger
 
-from rg_compiler.logging_config import configure_logging
+from regelum.logging_config import configure_logging
 
 configure_logging()
 

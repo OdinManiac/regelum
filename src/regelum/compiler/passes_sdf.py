@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import Dict, Any, List
-from rg_compiler.ir.graph import IRGraph
-from rg_compiler.compiler.pipeline import Pass, DiagnosticSink
+from regelum.ir.graph import IRGraph
+from regelum.compiler.pipeline import Pass, DiagnosticSink
 
 class SDFPass(Pass):
     name = "SDFPass"

@@ -1,7 +1,7 @@
 import pytest
-from rg_compiler.core.core_node import CoreNode, Input, Output, reaction
-from rg_compiler.core.dsl import Expr
-from rg_compiler.core.runtime import GraphRuntime
+from regelum.core.core_node import CoreNode, Input, Output, reaction
+from regelum.core.dsl import Expr
+from regelum.core.runtime import GraphRuntime
 
 class Producer(CoreNode):
     out = Output[int]()

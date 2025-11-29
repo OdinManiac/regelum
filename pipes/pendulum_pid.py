@@ -3,14 +3,14 @@ from __future__ import annotations
 import math
 import pygame
 
-from rg_compiler.api import Pipeline
-from rg_compiler.core.continuous import ContinuousNode, ContinuousState
-from rg_compiler.core.contracts import contract
-from rg_compiler.core.core_node import CoreNode, Input, Output, State, reaction
-from rg_compiler.core.dsl import Expr, Delay, If
-from rg_compiler.core.ext_node import ExtNode
-from rg_compiler.core.node import Context
-from rg_compiler.vis import DashboardPlotter, DashboardSignal, build_dashboard
+from regelum.api import Pipeline
+from regelum.core.continuous import ContinuousNode, ContinuousState
+from regelum.core.contracts import contract
+from regelum.core.core_node import CoreNode, Input, Output, State, reaction
+from regelum.core.dsl import Expr, Delay, If
+from regelum.core.ext_node import ExtNode
+from regelum.core.node import Context
+from regelum.vis import DashboardPlotter, DashboardSignal, build_dashboard
 
 DT = 0.01
 GRAVITY = 9.81

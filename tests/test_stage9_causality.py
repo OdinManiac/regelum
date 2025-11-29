@@ -1,10 +1,10 @@
 import pytest
-from rg_compiler.core.ext_node import ExtNode
-from rg_compiler.core.contracts import contract
-from rg_compiler.core.node import Context
-from rg_compiler.core.runtime import GraphRuntime
-from rg_compiler.compiler.pipeline import CompilerPipeline, CompilerConfig
-from rg_compiler.compiler.passes import CausalityPass
+from regelum.core.ext_node import ExtNode
+from regelum.core.contracts import contract
+from regelum.core.node import Context
+from regelum.core.runtime import GraphRuntime
+from regelum.compiler.pipeline import CompilerPipeline, CompilerConfig
+from regelum.compiler.passes import CausalityPass
 
 class LoopBreaker(ExtNode):
     def __init__(self, id):

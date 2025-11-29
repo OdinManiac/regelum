@@ -13,8 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from rg_compiler.api import Pipeline
-from rg_compiler.core.node import RawNode, Context
+from regelum.api import Pipeline
+from regelum.core.node import RawNode, Context
 
 from pipes.van_der_pol_hybrid import (
     ControlDelay,

@@ -1,8 +1,8 @@
 import pytest
-from rg_compiler.core.node import RawNode, Context
-from rg_compiler.core.runtime import GraphRuntime
-from rg_compiler.compiler.pipeline import CompilerPipeline, CompilerConfig, DiagnosticSeverity
-from rg_compiler.compiler.passes import StructuralPass
+from regelum.core.node import RawNode, Context
+from regelum.core.runtime import GraphRuntime
+from regelum.compiler.pipeline import CompilerPipeline, CompilerConfig, DiagnosticSeverity
+from regelum.compiler.passes import StructuralPass
 
 class SimpleNode(RawNode):
     def __init__(self, node_id: str):

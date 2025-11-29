@@ -4,10 +4,10 @@ import pytest
 
 os.environ["RG_DISABLE_FILE_LOGS"] = "1"
 
-from rg_compiler.api import Pipeline
-from rg_compiler.core.continuous import ContinuousNode, ContinuousState
-from rg_compiler.core.hybrid_adapters import ContinuousWrapper, ZeroOrderHold, Sampler
-from rg_compiler.core.node import RawNode, Context
+from regelum.api import Pipeline
+from regelum.core.continuous import ContinuousNode, ContinuousState
+from regelum.core.hybrid_adapters import ContinuousWrapper, ZeroOrderHold, Sampler
+from regelum.core.node import RawNode, Context
 
 
 class DrivenIntegrator(ContinuousNode):

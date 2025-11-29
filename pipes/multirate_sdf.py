@@ -1,7 +1,7 @@
-from rg_compiler.api import Pipeline
-from rg_compiler.core.core_node import CoreNode, Input, Output, State, reaction
-from rg_compiler.core.dsl import Expr
-from rg_compiler.compiler.report import CompilationReport
+from regelum.api import Pipeline
+from regelum.core.core_node import CoreNode, Input, Output, State, reaction
+from regelum.core.dsl import Expr
+from regelum.compiler.report import CompilationReport
 
 # Audio pipeline:
 # Source (rate 4) -> LowPass (rate 4) -> Downsampler (4 -> 1) -> Sink (rate 1)

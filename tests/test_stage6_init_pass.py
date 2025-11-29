@@ -1,8 +1,8 @@
 import pytest
-from rg_compiler.core.core_node import CoreNode, State, reaction
-from rg_compiler.core.runtime import GraphRuntime
-from rg_compiler.compiler.pipeline import CompilerPipeline, CompilerConfig
-from rg_compiler.compiler.passes import InitPass
+from regelum.core.core_node import CoreNode, State, reaction
+from regelum.core.runtime import GraphRuntime
+from regelum.compiler.pipeline import CompilerPipeline, CompilerConfig
+from regelum.compiler.passes import InitPass
 
 def test_init_pass_runs():
     runtime = GraphRuntime()

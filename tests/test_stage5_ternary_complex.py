@@ -1,7 +1,7 @@
 import pytest
-from rg_compiler.core.dsl import If, Const, Var, BinOp
-from rg_compiler.core.ternary import V3
-from rg_compiler.core.interpreter import eval_expr_3val
+from regelum.core.dsl import If, Const, Var, BinOp
+from regelum.core.ternary import V3
+from regelum.core.interpreter import eval_expr_3val
 
 def test_nested_ternary_if():
     inner = If(Var("u"), Const(1), Const(1))
@@ -14,7 +14,7 @@ def test_nested_ternary_if():
     assert res.value == 1
 
 def test_complex_ternary_resolution():
-    from rg_compiler.core.dsl import Cmp
+    from regelum.core.dsl import Cmp
     
     expr = If(
         Cmp(">", Var("x"), Const(0)),

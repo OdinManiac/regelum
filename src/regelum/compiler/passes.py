@@ -1,11 +1,11 @@
 from collections import defaultdict
 from typing import List, Dict, Set, Any, Optional
 
-from rg_compiler.ir.graph import IRGraph, IRReaction
-from rg_compiler.compiler.pipeline import Pass, DiagnosticSink
-from rg_compiler.core.ternary import V3, Presence
-from rg_compiler.core.interpreter import eval_expr_3val
-from rg_compiler.core.dsl import Expr, Var, If, BinOp, Cmp, Delay
+from regelum.ir.graph import IRGraph, IRReaction
+from regelum.compiler.pipeline import Pass, DiagnosticSink
+from regelum.core.ternary import V3, Presence
+from regelum.core.interpreter import eval_expr_3val
+from regelum.core.dsl import Expr, Var, If, BinOp, Cmp, Delay
 
 
 class StructuralPass(Pass):

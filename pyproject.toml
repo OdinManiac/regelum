@@ -1,5 +1,5 @@
 [project]
-name = "rg-compiler"
+name = "regelum"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-rg-compiler = "rg_compiler:main"
+regelum = "regelum:main"
 
 [build-system]
 requires = ["hatchling"]

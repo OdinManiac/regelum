@@ -1,9 +1,9 @@
 import pytest
-from rg_compiler.core.core_node import CoreNode, Input, Output
-from rg_compiler.core.runtime import GraphRuntime
-from rg_compiler.compiler.pipeline import CompilerPipeline, CompilerConfig, DiagnosticSeverity
-from rg_compiler.compiler.passes import TypeCheckPass, WriteConflictPass
-from rg_compiler.ir.graph import IRReaction, IRVariable
+from regelum.core.core_node import CoreNode, Input, Output
+from regelum.core.runtime import GraphRuntime
+from regelum.compiler.pipeline import CompilerPipeline, CompilerConfig, DiagnosticSeverity
+from regelum.compiler.passes import TypeCheckPass, WriteConflictPass
+from regelum.ir.graph import IRReaction, IRVariable
 
 class IntNode(CoreNode):
     x: Input[int] = Input[int]()
@@ -31,7 +31,7 @@ def test_type_check_pass():
     
     # Expect warning/error depending on implementation
     # My implementation does str(hint).
-    # Input[int] str might be "rg_compiler...Input[int]"
+    # Input[int] str might be "regelum...Input[int]"
     # Let's check what diagnostics we get.
     
     assert len(result.diagnostics) > 0
@@ -41,7 +41,7 @@ def test_type_check_pass():
 
 def test_write_conflict_pass_manual():
     # Manually build IR with conflict
-    from rg_compiler.ir.graph import IRGraph, IRNode
+    from regelum.ir.graph import IRGraph, IRNode
     
     ir = IRGraph()
     ir.variables["v1"] = IRVariable(name="v1", policy="ErrorPolicy")

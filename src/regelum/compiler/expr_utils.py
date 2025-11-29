@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Set
 
-from rg_compiler.core.dsl import Expr, Var, If, BinOp, Cmp, Delay
+from regelum.core.dsl import Expr, Var, If, BinOp, Cmp, Delay
 
 
 def collect_expr_vars(expr: Expr[Any]) -> Set[str]:

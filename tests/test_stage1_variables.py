@@ -1,7 +1,7 @@
 import pytest
-from rg_compiler.core.node import RawNode, Context, IntentContext
-from rg_compiler.core.runtime import GraphRuntime
-from rg_compiler.core.variables import Variable, SumPolicy, ErrorPolicy, LWWPolicy
+from regelum.core.node import RawNode, Context, IntentContext
+from regelum.core.runtime import GraphRuntime
+from regelum.core.variables import Variable, SumPolicy, ErrorPolicy, LWWPolicy
 
 class VarWriterNode(RawNode):
     def __init__(self, node_id: str, var: Variable[int], val: int):

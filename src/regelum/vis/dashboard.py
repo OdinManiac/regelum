@@ -5,10 +5,10 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import pygame
 
-from rg_compiler.core.contracts import contract
-from rg_compiler.core.core_node import Input
-from rg_compiler.core.ext_node import ExtNode
-from rg_compiler.core.node import Context
+from regelum.core.contracts import contract
+from regelum.core.core_node import Input
+from regelum.core.ext_node import ExtNode
+from regelum.core.node import Context
 
 
 @dataclass(frozen=True)

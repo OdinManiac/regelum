@@ -1,7 +1,7 @@
 import pytest
-from rg_compiler.core.dsl import Expr
-from rg_compiler.core.core_node import CoreNode, Input, Output, State, reaction
-from rg_compiler.core.runtime import GraphRuntime
+from regelum.core.dsl import Expr
+from regelum.core.core_node import CoreNode, Input, Output, State, reaction
+from regelum.core.runtime import GraphRuntime
 
 class ExplicitStateNode(CoreNode):
     val = State[int](init=10)

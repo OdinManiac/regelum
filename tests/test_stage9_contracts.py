@@ -1,10 +1,10 @@
 import pytest
-from rg_compiler.core.ext_node import ExtNode
-from rg_compiler.core.contracts import contract, unsafe
-from rg_compiler.core.node import Context # Fix import
-from rg_compiler.core.runtime import GraphRuntime
-from rg_compiler.compiler.pipeline import CompilerPipeline, CompilerConfig
-from rg_compiler.compiler.report import CompilationReport
+from regelum.core.ext_node import ExtNode
+from regelum.core.contracts import contract, unsafe
+from regelum.core.node import Context # Fix import
+from regelum.core.runtime import GraphRuntime
+from regelum.compiler.pipeline import CompilerPipeline, CompilerConfig
+from regelum.compiler.report import CompilationReport
 
 class ExtNodeWithContract(ExtNode):
     @contract(deterministic=True, monotone=True)

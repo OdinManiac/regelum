@@ -1,7 +1,7 @@
 import pytest
-from rg_compiler.core.ext_node import ExtNode
-from rg_compiler.core.core_node import Input, Output
-from rg_compiler.core.node import Context
+from regelum.core.ext_node import ExtNode
+from regelum.core.core_node import Input, Output
+from regelum.core.node import Context
 
 class DeclarativeExtNode(ExtNode):
     inp = Input[int]()

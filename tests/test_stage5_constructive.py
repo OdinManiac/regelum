@@ -1,11 +1,11 @@
 import pytest
-from rg_compiler.core.dsl import Expr, if_
-from rg_compiler.core.core_node import CoreNode, State, reaction
-from rg_compiler.core.runtime import GraphRuntime
-from rg_compiler.compiler.pipeline import CompilerPipeline, CompilerConfig
-from rg_compiler.compiler.passes import CausalityPass
-from rg_compiler.core.variables import LWWPolicy
-from rg_compiler.core.ternary import V3, Presence
+from regelum.core.dsl import Expr, if_
+from regelum.core.core_node import CoreNode, State, reaction
+from regelum.core.runtime import GraphRuntime
+from regelum.compiler.pipeline import CompilerPipeline, CompilerConfig
+from regelum.compiler.passes import CausalityPass
+from regelum.core.variables import LWWPolicy
+from regelum.core.ternary import V3, Presence
 
 class CycleNode(CoreNode):
     val = State[int](init=0)

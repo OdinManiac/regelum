@@ -1,13 +1,13 @@
 import pytest
-from rg_compiler.core.node import Context, IntentContext
-from rg_compiler.core.core_node import CoreNode, Input, Output, State, reaction
-from rg_compiler.core.ext_node import ExtNode
-from rg_compiler.core.dsl import Expr, if_, const, var, Delay
-from rg_compiler.core.runtime import GraphRuntime
-from rg_compiler.compiler.pipeline import CompilerPipeline, CompilerConfig
-from rg_compiler.compiler.passes import StructuralPass, TypeCheckPass, WriteConflictPass, CausalityPass
-from rg_compiler.compiler.passes_sdf import SDFPass
-from rg_compiler.core.variables import SumPolicy
+from regelum.core.node import Context, IntentContext
+from regelum.core.core_node import CoreNode, Input, Output, State, reaction
+from regelum.core.ext_node import ExtNode
+from regelum.core.dsl import Expr, if_, const, var, Delay
+from regelum.core.runtime import GraphRuntime
+from regelum.compiler.pipeline import CompilerPipeline, CompilerConfig
+from regelum.compiler.passes import StructuralPass, TypeCheckPass, WriteConflictPass, CausalityPass
+from regelum.compiler.passes_sdf import SDFPass
+from regelum.core.variables import SumPolicy
 
 # --- Helpers ---
 def run_compile(runtime: GraphRuntime):

@@ -1,10 +1,10 @@
 import pytest
-from rg_compiler.core.dsl import If, Const, Var, BinOp
-from rg_compiler.core.ternary import V3
-from rg_compiler.core.interpreter import eval_expr_3val
-from rg_compiler.ir.graph import IRGraph, IRNode, IRReaction, IREdge
-from rg_compiler.compiler.pipeline import DiagnosticSink
-from rg_compiler.compiler.passes import CausalityPass
+from regelum.core.dsl import If, Const, Var, BinOp
+from regelum.core.ternary import V3
+from regelum.core.interpreter import eval_expr_3val
+from regelum.ir.graph import IRGraph, IRNode, IRReaction, IREdge
+from regelum.compiler.pipeline import DiagnosticSink
+from regelum.compiler.passes import CausalityPass
 
 def test_eval_3val_if_merge():
     # if (unknown) then 1 else 1 -> 1
