@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import pygame
 
 from rg_compiler.api import Pipeline
 from rg_compiler.core.continuous import ContinuousNode, ContinuousState
@@ -16,6 +17,21 @@ GRAVITY = 9.81
 LENGTH = 1.0
 TARGET_ANGLE = math.pi
 MAX_FORCE = 500.0
+
+
+def draw_pendulum(surface: pygame.Surface, rect: pygame.Rect, values: dict[str, float], t: float) -> None:
+    theta = values.get("theta", 0.0)
+    pivot_x = rect.left + rect.width // 2
+    pivot_y = rect.top + rect.height // 2
+    arm_len = int(min(rect.height, rect.width) * 0.35)
+    bob_radius = max(6, arm_len // 14)
+    bob_x = pivot_x + int(arm_len * math.sin(theta))
+    bob_y = pivot_y + int(arm_len * math.cos(theta))
+
+    pygame.draw.rect(surface, (14, 14, 18), rect)
+    pygame.draw.line(surface, (120, 120, 130), (pivot_x, pivot_y), (bob_x, bob_y), 3)
+    pygame.draw.circle(surface, (230, 230, 240), (pivot_x, pivot_y), 6)
+    pygame.draw.circle(surface, (255, 99, 71), (bob_x, bob_y), bob_radius)
 
 
 class PendulumContinuous(ContinuousNode):
@@ -41,9 +57,9 @@ class PIDController(CoreNode):
 
     integral = State[float](init=0.0)
 
-    Kp = 5.0
+    Kp = 15.0
     Ki = 0.0
-    Kd = 5.0
+    Kd = 1.0
 
     @reaction(rank="integral", max_microsteps=2)
     def control(self, theta: Expr[float], omega: Expr[float], integral: Expr[float]) -> Expr[float]:
@@ -108,6 +124,7 @@ def build_pipeline(dt: float = DT) -> Pipeline:
             DashboardSignal("force", "force", (75, 192, 192)),
         ],
         time_window=None,
+        custom_anim=draw_pendulum,
     )
 
     pipe = Pipeline(mode="strict")

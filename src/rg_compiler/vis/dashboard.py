@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import pygame
 
@@ -31,6 +31,7 @@ class DashboardPlotter(ExtNode):
         height: int = 720,
         max_points: int = 200000,
         time_window: Optional[float] = 12.0,
+        custom_anim: Optional[Callable[[pygame.Surface, pygame.Rect, Dict[str, float], float], None]] = None,
     ):
         super().__init__(node_id)
         self._signals = list(signals)
@@ -49,6 +50,7 @@ class DashboardPlotter(ExtNode):
         self._grid_color = (60, 60, 70)
         self._axis_color = (200, 200, 210)
         self._button_rect: pygame.Rect | None = None
+        self._custom_anim = custom_anim
         for sig in self._signals:
             self.add_input(sig.name, default=0.0)
 
@@ -79,16 +81,15 @@ class DashboardPlotter(ExtNode):
         start = self._time - window
         return [p for p in series if p[0] >= start]
 
-    def _panel_rects(self) -> List[pygame.Rect]:
+    def _panel_rects(self, available_width: int, left: int, margin: int) -> List[pygame.Rect]:
         count = len(self._signals)
-        margin = 16
         if count == 0:
             return []
         panel_height = (self._height - margin * (count + 1)) // count
         rects: List[pygame.Rect] = []
         top = margin
         for _ in range(count):
-            rects.append(pygame.Rect(margin, top, self._width - margin * 2, panel_height))
+            rects.append(pygame.Rect(left, top, available_width, panel_height))
             top += panel_height + margin
         return rects
 
@@ -158,6 +159,24 @@ class DashboardPlotter(ExtNode):
             font_height = 0
         self._screen.blit(y_label, (rect.right - y_label.get_width() - 8, rect.top + font_height + 4))
 
+    def _layout(self) -> tuple[pygame.Rect | None, List[pygame.Rect]]:
+        margin = 16
+        if self._custom_anim is None:
+            panels = self._panel_rects(self._width - margin * 2, margin, margin)
+            return None, panels
+        anim_width = int(self._width * 0.4)
+        anim_rect = pygame.Rect(margin, margin, anim_width, self._height - margin * 2)
+        right_width = self._width - anim_width - margin * 3
+        right_left = anim_rect.right + margin
+        panels = self._panel_rects(right_width, right_left, margin)
+        return anim_rect, panels
+
+    def _draw_anim(self, rect: pygame.Rect, values: Dict[str, float]) -> None:
+        if self._screen is None or self._custom_anim is None:
+            return
+        pygame.draw.rect(self._screen, (12, 12, 14), rect)
+        self._custom_anim(self._screen, rect, values, self._time)
+
     def _draw_button(self) -> None:
         if self._screen is None or self._font_large is None or self._button_rect is None:
             return
@@ -190,12 +209,16 @@ class DashboardPlotter(ExtNode):
             return
 
         self._time += dt_val
+        current_values: Dict[str, float] = {}
         for sig in self._signals:
             val = ctx.read(self.inputs[sig.name])
+            current_values[sig.name] = val
             self._append_sample(sig.name, (self._time, val))
 
         self._screen.fill((10, 10, 12))
-        panels = self._panel_rects()
+        anim_rect, panels = self._layout()
+        if anim_rect is not None:
+            self._draw_anim(anim_rect, current_values)
         for rect, sig in zip(panels, self._signals):
             history = self._histories[sig.name]
             self._plot_series(rect, sig.name, history, sig.label, sig.color)
@@ -209,7 +232,14 @@ class DashboardPlotter(ExtNode):
         if self._screen is None:
             return
         self._screen.fill((10, 10, 12))
-        panels = self._panel_rects()
+        anim_rect, panels = self._layout()
+        latest_values: Dict[str, float] = {}
+        for sig in self._signals:
+            hist = self._histories[sig.name]
+            if hist:
+                latest_values[sig.name] = hist[-1][1]
+        if anim_rect is not None:
+            self._draw_anim(anim_rect, latest_values)
         for rect, sig in zip(panels, self._signals):
             history = self._histories[sig.name]
             self._plot_series(rect, sig.name, history, sig.label, sig.color)

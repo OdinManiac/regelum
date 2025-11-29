@@ -12,17 +12,21 @@ class ZenoRuntimeError(RuntimeError):
 
 
 class RuntimeIntentContext(IntentContext):
-    def __init__(self, 
-                 node_id: NodeId,
-                 port_state: Dict[Port, Any], 
-                 edges: Dict[Port, Port],
-                 var_state: Dict[str, Any], # map variable name to value
-                 intents: List[Intent[Any]]):
+    def __init__(
+        self,
+        node_id: NodeId,
+        port_state: Dict[Port, Any],
+        edges: Dict[Port, Port],
+        var_state: Dict[str, Any],
+        intents: List[Intent[Any]],
+        snapshot: Dict[Port, Any] | None = None,
+    ):
         self.node_id = node_id
         self.port_state = port_state
         self.edges = edges
         self.var_state = var_state
         self.intents = intents
+        self.snapshot = snapshot
 
     def read(self, port: Port) -> Any:
         # If port is an input, find connected output(s).
@@ -41,12 +45,16 @@ class RuntimeIntentContext(IntentContext):
         if len(sources) == 1:
             # Single source
             source_port = sources[0]
+            if self.snapshot is not None and source_port in self.snapshot:
+                return self.snapshot[source_port]
             val = self.port_state.get(source_port, ABSENT)
             if val is ABSENT and port.default is not None:
                 return port.default
             return val
         
         source_port = sources[-1]
+        if self.snapshot is not None and source_port in self.snapshot:
+            return self.snapshot[source_port]
         val = self.port_state.get(source_port, ABSENT)
         if val is ABSENT and port.default is not None:
             return port.default
@@ -73,6 +81,8 @@ class GraphRuntime:
         self.var_state: Dict[str, Any] = {} # Variable.name -> Value
         self.max_microsteps = 20
         self.current_time = 0.0
+        self.tickwise_mode = False
+        self._tickwise_outputs: Dict[Port, Any] = {}
 
     def add_node(self, node: RawNode) -> None:
         if node.id in self.nodes:
@@ -84,17 +94,32 @@ class GraphRuntime:
         self.edges[dst].append(src)
 
     def build_schedule(self) -> None:
-        # Tarjan's Algorithm to find SCCs
-        adj: Dict[NodeId, List[NodeId]] = defaultdict(list)
+        # Build two graphs:
+        # - adj_full: all dependencies for topological ordering.
+        # - adj_scc: dependencies excluding nodes that declare no_instant_loop, to prevent
+        #   them from participating in instantaneous cycles.
+        adj_full: Dict[NodeId, List[NodeId]] = defaultdict(list)
+        adj_scc: Dict[NodeId, List[NodeId]] = defaultdict(list)
         for dst_port, src_ports in self.edges.items():
             for src_port in src_ports:
                 dst_nid = dst_port.node_id
                 src_nid = src_port.node_id
-                if dst_nid and self.nodes[dst_nid]._no_instant_loop:
+                if not dst_nid or not src_nid or dst_nid == src_nid:
                     continue
-                if dst_nid and src_nid and dst_nid != src_nid:
-                    adj[src_nid].append(dst_nid)
+                if getattr(src_port, "is_delay_output", False):
+                    # Delay outputs deliver previous-tick values, so consumers must run
+                    # before producers overwrite the buffer this tick.
+                    adj_full[dst_nid].append(src_nid)
+                    continue
+                adj_full[src_nid].append(dst_nid)
+                if not self.nodes[dst_nid]._no_instant_loop:
+                    adj_scc[src_nid].append(dst_nid)
 
+        for node_id in self.nodes:
+            adj_full.setdefault(node_id, [])
+            adj_scc.setdefault(node_id, [])
+
+        # Tarjan on adj_scc to keep no_instant_loop nodes as SCC boundaries.
         visited: Set[NodeId] = set()
         stack: List[NodeId] = []
         on_stack: Set[NodeId] = set()
@@ -111,7 +136,7 @@ class GraphRuntime:
             ids[at] = low[at] = id_counter
             id_counter += 1
 
-            for to in adj[at]:
+            for to in adj_scc[at]:
                 if to not in visited:
                     dfs(to)
                     low[at] = min(low[at], low[to])
@@ -119,20 +144,57 @@ class GraphRuntime:
                     low[at] = min(low[at], ids[to])
 
             if ids[at] == low[at]:
-                scc = []
+                scc: List[NodeId] = []
                 while stack:
                     node = stack.pop()
                     on_stack.remove(node)
                     scc.append(node)
-                    if node == at: break
-                sccs.append(scc) # sccs are found in reverse topological order
+                    if node == at:
+                        break
+                sccs.append(scc)
 
         for node_id in self.nodes:
             if node_id not in visited:
                 dfs(node_id)
 
-        self.schedule = sccs 
-        self.schedule.reverse()
+        # Map node -> SCC index
+        scc_index: Dict[NodeId, int] = {}
+        for idx, comp in enumerate(sccs):
+            for nid in comp:
+                scc_index[nid] = idx
+
+        # Condensation graph using full dependencies to preserve order.
+        cond_adj: Dict[int, Set[int]] = defaultdict(set)
+        indeg: Dict[int, int] = defaultdict(int)
+        for src, dsts in adj_full.items():
+            for dst in dsts:
+                s_src = scc_index[src]
+                s_dst = scc_index[dst]
+                if s_src == s_dst:
+                    continue
+                if s_dst not in cond_adj[s_src]:
+                    cond_adj[s_src].add(s_dst)
+                    indeg[s_dst] += 1
+        for idx in range(len(sccs)):
+            indeg.setdefault(idx, 0)
+
+        # Kahn topological order on SCC DAG.
+        ready = [idx for idx, deg in indeg.items() if deg == 0]
+        ready.sort()
+        topo_scc: List[int] = []
+        while ready:
+            current = ready.pop(0)
+            topo_scc.append(current)
+            for nbr in cond_adj.get(current, ()):
+                indeg[nbr] -= 1
+                if indeg[nbr] == 0:
+                    ready.append(nbr)
+                    ready.sort()
+
+        if len(topo_scc) != len(sccs):
+            topo_scc = list(range(len(sccs)))
+
+        self.schedule = [sccs[idx] for idx in topo_scc]
 
     def _prefill_delay_outputs(self) -> None:
         for node in self.nodes.values():
@@ -164,6 +226,9 @@ class GraphRuntime:
 
     def run_tick(self, inputs: Dict[Port, Any] | None = None, dt: float | None = None) -> None:
         # Stage 6: Clear ports at start of tick.
+        snapshot: Dict[Port, Any] | None = None
+        if self.tickwise_mode:
+            snapshot = dict(self._tickwise_outputs)
         self.port_state.clear()
         self._prefill_delay_outputs()
 
@@ -180,22 +245,29 @@ class GraphRuntime:
         intents: List[Intent[Any]] = []
         
         # 1. Propose Phase
-        self._propose_phase(intents)
+        self._propose_phase(intents, snapshot)
         
         # 2. Resolve Phase
         updates = self._resolve_phase(intents)
         
         # 3. Commit Phase
         self._commit_phase(updates)
+        if self.tickwise_mode:
+            outputs: Dict[Port, Any] = {}
+            for node in self.nodes.values():
+                for port in node.outputs.values():
+                    val = self.port_state.get(port, ABSENT)
+                    outputs[port] = val
+            self._tickwise_outputs = outputs
         if dt is not None:
             self.current_time += dt
 
-    def _propose_phase(self, intents: List[Intent[Any]]) -> None:
+    def _propose_phase(self, intents: List[Intent[Any]], snapshot: Dict[Port, Any] | None) -> None:
         for scc in self.schedule:
             if len(scc) == 1 and not self._has_self_loop(scc[0]):
-                self._run_node(scc[0], intents)
+                self._run_node(scc[0], intents, snapshot)
             else:
-                self._run_scc_loop(scc, intents)
+                self._run_scc_loop(scc, intents, snapshot)
 
     def _has_self_loop(self, node_id: NodeId) -> bool:
         for dst_port, src_ports in self.edges.items():
@@ -205,29 +277,42 @@ class GraphRuntime:
                         return True
         return False
 
-    def _run_node(self, node_id: NodeId, intents: List[Intent[Any]]) -> None:
+    def _run_node(self, node_id: NodeId, intents: List[Intent[Any]], snapshot: Dict[Port, Any] | None) -> None:
         node = self.nodes[node_id]
         ctx = RuntimeIntentContext(
             node_id, 
             self.port_state, 
             self.edges,
             self.var_state, 
-            intents
+            intents,
+            snapshot,
         )
         node.step(ctx)
     
-    def _run_node_with_state(self, node_id: NodeId, intents: List[Intent[Any]], var_state: Dict[str, Any]) -> None:
+    def _run_node_with_state(
+        self,
+        node_id: NodeId,
+        intents: List[Intent[Any]],
+        var_state: Dict[str, Any],
+        snapshot: Dict[Port, Any] | None,
+    ) -> None:
         node = self.nodes[node_id]
         ctx = RuntimeIntentContext(
             node_id, 
             self.port_state, 
             self.edges,
             var_state, 
-            intents
+            intents,
+            snapshot,
         )
         node.step(ctx)
 
-    def _run_scc_loop(self, scc: List[NodeId], global_intents: List[Intent[Any]]) -> None:
+    def _run_scc_loop(
+        self,
+        scc: List[NodeId],
+        global_intents: List[Intent[Any]],
+        snapshot: Dict[Port, Any] | None,
+    ) -> None:
         prev_outputs: Dict[Port, Any] = {}
         working_vars: Dict[str, Any] = dict(self.var_state)
         last_intents: List[Intent[Any]] = []
@@ -238,7 +323,7 @@ class GraphRuntime:
             before_vars = dict(working_vars)
             
             for node_id in scc:
-                self._run_node_with_state(node_id, current_intents, working_vars)
+                self._run_node_with_state(node_id, current_intents, working_vars, snapshot)
                 
                 node = self.nodes[node_id]
                 for port in node.outputs.values():
