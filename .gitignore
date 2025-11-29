@@ -9,3 +9,6 @@ wheels/
 # Virtual environments
 .venv
 logs/
+.uv-cache/
+.pytest_cache/
+docs_local
