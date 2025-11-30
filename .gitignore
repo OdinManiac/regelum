@@ -12,3 +12,4 @@ logs/
 .uv-cache/
 .pytest_cache/
 docs_local
+frames*

@@ -1,11 +1,12 @@
-# Regelum Compiler
+# Regelum
+
+<p align="center">
+  <img src="assets/van-der-pol.gif" alt="Van der Pol hybrid" width="33%">
+  <img src="assets/pid.gif" alt="Pendulum PID" width="33%">
+  <img src="assets/nonhol.gif" alt="Nonholonomic MPC" width="33%">
+</p>
 
 Reactive pipeline compiler with staged formal guarantees (structural, causality, non-Zeno, SDF, hybrid CT).
-
-## Status
-
-- Stages 0-12 implemented: Core runtime + DSL, analyses (structural/causality/init/non-Zeno/SDF), contracts for Ext/Raw, wiring DSL (`>>`), Pipeline facade, and auto-wiring.
-- Python 3.13+. Use `uv` for installs/runs (`uv sync`, `uv run ...`).
 
 ## What the compiler guarantees today
 

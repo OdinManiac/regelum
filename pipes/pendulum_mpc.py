@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import math
+import os
+from pathlib import Path
 from typing import Sequence
 
 import pygame
@@ -181,15 +183,19 @@ def build_pipeline(dt: float = DT) -> Pipeline:
     return pipe
 
 
-def run_simulation():
+def run_simulation(record_dir: str | None = None):
     pipe = build_pipeline(dt=DT)
     if not pipe.compile():
         return
     dash: DashboardPlotter = pipe.runtime.nodes["Dashboard"]  # type: ignore[assignment]
+    rec_dir = record_dir or os.getenv("REC_DIR")
+    recorder = _make_recorder(rec_dir)
+
     step_idx = 0
     while step_idx < 3000:
         if dash.paused:
             dash.render_static()
+            recorder()
             continue
         pipe.run(ticks=1, dt=DT)
         plant_node = pipe.runtime.nodes["Plant"]
@@ -197,6 +203,25 @@ def run_simulation():
         control = pipe.runtime.port_state.get(pipe.runtime.nodes["MPC"].outputs["force"], 0.0)
         print(f"T={step_idx*DT:.2f} theta={state['theta']:.3f} omega={state['omega']:.3f} control={control:.3f}")
         step_idx += 1
+        recorder()
+
+
+def _make_recorder(rec_dir: str | None):
+    if not rec_dir:
+        return lambda: None
+    base = Path(rec_dir)
+    frame_idx = 0
+
+    def capture():
+        nonlocal frame_idx
+        surf = pygame.display.get_surface()
+        if surf is None:
+            return
+        base.mkdir(parents=True, exist_ok=True)
+        pygame.image.save(surf, str(base / f"frame_{frame_idx:05d}.png"))
+        frame_idx += 1
+
+    return capture
 
 
 if __name__ == "__main__":
