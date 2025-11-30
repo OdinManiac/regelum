@@ -1,9 +1,9 @@
 # Regelum
 
 <p align="center">
-  <img src="assets/van-der-pol.gif" alt="Van der Pol hybrid" width="33%">
-  <img src="assets/pid.gif" alt="Pendulum PID" width="33%">
-  <img src="assets/nonhol.gif" alt="Nonholonomic MPC" width="33%">
+  <img src="assets/van-der-pol.gif" alt="Van der Pol hybrid" width="30%">
+  <img src="assets/pid.gif" alt="Pendulum PID" width="30%">
+  <img src="assets/nonhol.gif" alt="Nonholonomic MPC" width="30%">
 </p>
 
 Reactive pipeline compiler with staged formal guarantees (structural, causality, non-Zeno, SDF, hybrid CT).
